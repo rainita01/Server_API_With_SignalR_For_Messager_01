@@ -1,0 +1,6 @@
+@Server_API_With_SignalR_For_Messager_01_HostAddress = http://localhost:5209
+
+GET {{Server_API_With_SignalR_For_Messager_01_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
