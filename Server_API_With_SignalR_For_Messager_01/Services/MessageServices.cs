@@ -105,6 +105,8 @@ namespace WebSocketSharpServer.Services
         }
 
         
+        [SuppressMessage("ReSharper.DPA", "DPA0000: DPA issues")]
+        [SuppressMessage("ReSharper.DPA", "DPA0006: Large number of DB commands", MessageId = "count: 61")]
         public Task<List<MessageModelFromServer>> ConvertMessagesToMessagesModelFromUserAsync(List<Message> messages)
         {
           var convertedMessage =  messages.Select(e => new MessageModelFromServer()
@@ -113,9 +115,11 @@ namespace WebSocketSharpServer.Services
               Id = e.Id,
               ConversationId = e.ConversationId,
               Text = e is TextMessage message ? message.Text : null,
-              Username = dbModel.Users
-                  .AsNoTracking()
-                  .First(s=>s.Id == e.UserId).Username,
+               Username = dbModel.Users
+              .AsNoTracking()
+              .Where(u => u.Id == e.UserId)
+              .Select(u => u.Username)
+              .FirstOrDefault() ?? "Unknown",
               MessageType = e switch
               {
                   AudioMessage => MessageTypes.Audio,

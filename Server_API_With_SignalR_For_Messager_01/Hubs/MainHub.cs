@@ -2,6 +2,7 @@
 using Server_API_With_SignalR_For_Messager_01.Abstracts.HubHelperInterfaces;
 using Server_API_With_SignalR_For_Messager_01.Services;
 using System.Security.Cryptography.X509Certificates;
+using demo_158.MVVM.Model;
 using Server_API_With_SignalR_For_Messager_01.Models;
 using WebSocketSharpServer.DbContext.Entities;
 using WebSocketSharpServer.Models;
@@ -15,13 +16,15 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         private readonly MemberShipServices _memberShipServices;
         private readonly MessageServices _messageServices;
         private readonly ConversationServices _conversationServices;
+        private readonly ProfileServices _profileServices;
 
-        public MainHub(UsersManager users,MemberShipServices memberShipServices,MessageServices messageServices, ConversationServices conversationServices)
+        public MainHub(UsersManager users,MemberShipServices memberShipServices,MessageServices messageServices, ConversationServices conversationServices,ProfileServices profileServices)
         {
             _users = users;
             _memberShipServices = memberShipServices;
             _messageServices = messageServices;
             _conversationServices = conversationServices;
+            _profileServices = profileServices;
         }
 
 
@@ -88,7 +91,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         public async Task SendMessageToPrivate(string toUser, MessageModelFromUser message)
         {
             _users.ConnectedUsers.TryGetValue(toUser, out var value);
-            var convertMessage = _messageServices?.ConvertMessageFromUserToMessageFromServer(message);
+            var convertMessage = _messageServices.ConvertMessageFromUserToMessageFromServer(message);
             if (convertMessage == null)
                 throw new Exception();
 
@@ -110,6 +113,13 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         }
 
+        public async Task ChangeProfile(ProfileEditModel profile)
+        {
+            var user =await _memberShipServices.GetUserAsync(profile.Username);
+            await _profileServices.ProfileChangeSubmitAsync(profile, user);
+            await Clients.Caller.SendAsync("ChangeProfile", "ProfileUpdatedSuccessfully.");
+
+        }
 
         public override async Task OnConnectedAsync()
         {

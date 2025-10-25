@@ -14,7 +14,7 @@ builder.Services.AddSingleton<UsersManager>();
 builder.Services.AddScoped<MemberShipServices>();
 builder.Services.AddScoped<MessageServices>();
 builder.Services.AddScoped<ConversationServices>();
-
+builder.Services.AddScoped<ProfileServices>();
 
 // Database injection
 builder.Services.AddDbContext<ApplicationDbModel>(options =>
