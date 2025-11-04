@@ -1,10 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Server_API_With_SignalR_For_Messager_01.Abstracts.HubHelperInterfaces;
 using Server_API_With_SignalR_For_Messager_01.Services;
-using System.Security.Cryptography.X509Certificates;
 using demo_158.MVVM.Model;
-using Server_API_With_SignalR_For_Messager_01.Models;
-using WebSocketSharpServer.DbContext.Entities;
 using WebSocketSharpServer.Models;
 using WebSocketSharpServer.Services;
 
@@ -27,7 +23,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             _profileServices = profileServices;
         }
 
-
+        
         public async Task RegisterRequest(UserModelFromUser user)
         {
             try
@@ -37,30 +33,12 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     var dbuser = await _memberShipServices.GetUserAsync(user.Username);
                     var userToSend = new UserModelFromServer()
                     {
-                        Username = user.Username,
+                        Username = dbuser.Username,
                         BioCaption = dbuser.BioCaption,
                         Email = dbuser.Email,
-                        UserId = dbuser.Id
-                        
-                       
+                        UserId = dbuser.Id,
                     };
-                    var conversations = await _conversationServices.GetConversationsAsync(dbuser.Id);
-                    var conversationToSend = conversations.Select(e =>
-                    {
-                        var contactUser = e.Users.FirstOrDefault(o => o.Id != dbuser.Id);
-                        var lastMessage = e.Messages
-                            .OrderBy(m => m.SentTime)
-                            .LastOrDefault();
-                        return new ConversationModel()
-                        {
-                            Id = e.Id,
-                            ContactUsername = contactUser.Username,
-                            CreatedTime = e.CreatedTime,
-                            IsConversationPrivateChat = e.IsConversationPrivateChat,
-                            LastMessage = _messageServices.ConvertMessageToLastMessageModel(lastMessage)
-                        };
-                    }).ToList();
-                    await Clients.Caller.SendAsync("ReceiveUser", userToSend,conversationToSend);
+                    await Clients.Caller.SendAsync("ReceiveUser", userToSend);
                     _users.ConnectedUsers.Add(user.Username,Context.ConnectionId);
                 }
                 else
@@ -74,6 +52,32 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             }
         }
 
+        public async Task ReceiveConversations(int userId)
+        {
+            var conversations = await _conversationServices.GetConversationsAsync(userId);
+            var tasks = conversations.Select(async e =>
+            {
+                var contactUser = e.Users.FirstOrDefault(s => s.Id != userId);
+                var contactInfo = new ContactUserInfo()
+                {
+                    ContactUsername = contactUser.Username,
+                    Id = contactUser.Id,
+                    UsersId = e.Users.Select(s => s.Id).ToList()
+
+                };
+                return new ConversationModelFromServer()
+                {
+                    Id = e.Id,
+                    IsConversationPrivateChat = e.IsConversationPrivateChat,
+                    CreatedTime = e.CreatedTime,
+                    ContactUserInfo = contactInfo
+                };
+            }).ToList();
+            var conversationToSend = (await Task.WhenAll(tasks))
+                .Where(c=>c != null)
+                .ToList();
+            await Clients.Caller.SendAsync("ReceiveConversations", conversationToSend);
+        }
         public async Task SignUp(UserModelFromUser user)
         {
             if (!string.IsNullOrEmpty(user.Password) && !await (_memberShipServices.IsUserExistAsync(user.Username)))
@@ -91,25 +95,23 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         public async Task SendMessageToPrivate(string toUser, MessageModelFromUser message)
         {
             _users.ConnectedUsers.TryGetValue(toUser, out var value);
-            var convertMessage = _messageServices.ConvertMessageFromUserToMessageFromServer(message);
-            if (convertMessage == null)
+            var messageToSend = _messageServices.ConvertMessageFromUserToMessageFromServer(message);
+            if (messageToSend == null)
                 throw new Exception();
 
             if (!string.IsNullOrEmpty(value))
-            {
-                await Clients.Client(value).SendAsync("ReceivePrivateMessage", convertMessage);
+            {       
+                await Clients.Client(value).SendAsync("ReceivePrivateMessage", messageToSend);
             }
             
-            await _messageServices.SaveMessageToDataBase(convertMessage);
+            await _messageServices.SaveMessageToDataBase(messageToSend);
         }
 
-        public async Task ConversationSender(ConversationModel conversationModel)
+        public async Task ReceiveMessages(ConversationModel conversationModel)
         {
             var messages = await _messageServices.UploadMessagesAsync(conversationModel, null);
-            var user = await _memberShipServices.GetUserAsync(conversationModel.ContactUsername);
             var messageModels = await _messageServices.ConvertMessagesToMessagesModelFromUserAsync(messages);
-            var userModelFromServer = _memberShipServices.ConvertUserToUserModelFromServer(user);
-            await Clients.Caller.SendAsync("ReceiveConversation", messageModels, userModelFromServer);
+            await Clients.Caller.SendAsync("ReceiveMessages", messageModels);
 
         }
 

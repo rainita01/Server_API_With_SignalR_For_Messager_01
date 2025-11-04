@@ -51,7 +51,8 @@ namespace WebSocketSharpServer.DbContext.Entities
             public Conversation Conversation { get; set; }
             public User Sender { get; set; }
             public int UserId { get; set; }
-    }
+            public bool IsSeen { get; set; } = false;
+         }
         
         public class TextMessage : Message
         {

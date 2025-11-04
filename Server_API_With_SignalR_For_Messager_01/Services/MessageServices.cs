@@ -81,32 +81,6 @@ namespace WebSocketSharpServer.Services
             return messages;
 
         }
-        public LastMessageModel ConvertMessageToLastMessageModel(Message? message)
-        {
-            if (message == null)
-            {
-                return null;
-            }
-
-            var lastMessage = new LastMessageModel()
-            {
-                SendDate = message.SentTime,
-                Text = (message as TextMessage)?.Text,
-                MessageType = message switch
-                {
-                    AudioMessage => MessageTypes.Audio,
-                    ImageMessage => MessageTypes.Image,
-                    VideoMessage => MessageTypes.Video,
-                    FileMessage => MessageTypes.File,
-                    _ => MessageTypes.Text
-                }
-            };
-            return lastMessage;
-        }
-
-        
-        [SuppressMessage("ReSharper.DPA", "DPA0000: DPA issues")]
-        [SuppressMessage("ReSharper.DPA", "DPA0006: Large number of DB commands", MessageId = "count: 61")]
         public Task<List<MessageModelFromServer>> ConvertMessagesToMessagesModelFromUserAsync(List<Message> messages)
         {
           var convertedMessage =  messages.Select(e => new MessageModelFromServer()

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebSocketSharpServer.DbContext.DbModel;
 
@@ -11,9 +12,11 @@ using WebSocketSharpServer.DbContext.DbModel;
 namespace Server_API_With_SignalR_For_Messager_01.Migrations
 {
     [DbContext(typeof(ApplicationDbModel))]
-    partial class ApplicationDbModelModelSnapshot : ModelSnapshot
+    [Migration("20251025202921_addIsseenToMessageEntity")]
+    partial class addIsseenToMessageEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
