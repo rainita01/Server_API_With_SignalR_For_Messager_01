@@ -52,6 +52,13 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             }
         }
 
+        public async Task ReconnectRequest(UserModelFromUser user)
+        {
+            if (user.Username != null)
+            {
+                _users.ConnectedUsers.Add(user.Username, Context.ConnectionId);
+            }
+        }
         public async Task ReceiveConversations(int userId)
         {
             var conversations = await _conversationServices.GetConversationsAsync(userId);
@@ -130,8 +137,18 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             string connectionId = Context.ConnectionId;
+            
+            if (!string.IsNullOrEmpty(connectionId))
+            {
+              var user =  _users.ConnectedUsers.FirstOrDefault(e => e.Value == connectionId);
+              if (user.Key != null)
+              {
+                  _users.ConnectedUsers.Remove(user.Key);
+              }
+          
+            }
             await base.OnDisconnectedAsync(exception);
         }
-
+    
     }
 }
