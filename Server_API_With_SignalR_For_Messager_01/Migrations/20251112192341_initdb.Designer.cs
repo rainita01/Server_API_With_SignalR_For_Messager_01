@@ -12,8 +12,8 @@ using WebSocketSharpServer.DbContext.DbModel;
 namespace Server_API_With_SignalR_For_Messager_01.Migrations
 {
     [DbContext(typeof(ApplicationDbModel))]
-    [Migration("20251019211919_init")]
-    partial class init
+    [Migration("20251112192341_initdb")]
+    partial class initdb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -75,6 +75,9 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
 
                     b.Property<int>("ConversationId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsSeen")
+                        .HasColumnType("bit");
 
                     b.Property<string>("MessageType")
                         .IsRequired()
@@ -155,10 +158,6 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("Title")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -167,7 +166,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserImage");
+                    b.ToTable("UserImages");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.AudioMessage", b =>
@@ -188,6 +187,26 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         });
 
                     b.HasDiscriminator().HasValue("Audio");
+                });
+
+            modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.FileMessage", b =>
+                {
+                    b.HasBaseType("WebSocketSharpServer.DbContext.Entities.Message");
+
+                    b.Property<byte[]>("FileData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.ToTable("Messages", t =>
+                        {
+                            t.Property("Title")
+                                .HasColumnName("FileMessage_Title");
+                        });
+
+                    b.HasDiscriminator().HasValue("File");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.ImageMessage", b =>
@@ -258,7 +277,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebSocketSharpServer.DbContext.Entities.User", "Sender")
+                    b.HasOne("WebSocketSharpServer.DbContext.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -266,7 +285,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
 
                     b.Navigation("Conversation");
 
-                    b.Navigation("Sender");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.UserImage", b =>

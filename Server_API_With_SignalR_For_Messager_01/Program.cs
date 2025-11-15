@@ -15,13 +15,17 @@ builder.Services.AddScoped<MemberShipServices>();
 builder.Services.AddScoped<MessageServices>();
 builder.Services.AddScoped<ConversationServices>();
 builder.Services.AddScoped<ProfileServices>();
+builder.Services.AddScoped<StateServices>();    
 
 // Database injection
 builder.Services.AddDbContext<ApplicationDbModel>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),ServiceLifetime.Scoped);
 
 builder.Services.AddOpenApi();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 10 * 1024 * 1024;
+});
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

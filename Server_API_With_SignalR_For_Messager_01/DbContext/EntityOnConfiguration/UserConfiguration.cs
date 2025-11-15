@@ -18,7 +18,9 @@ namespace WebSocketSharpServer.DbContext.EntityOnConfiguration
             builder.Property(p => p.Password).HasMaxLength(100).IsUnicode(false);
             builder.Property(p => p.Email).HasMaxLength(100);
             builder.Property(p => p.BioCaption).HasMaxLength(400);
-
+            builder.HasOne(e => e.Image).WithOne(e => e.User)
+                .HasForeignKey<UserImage>(e => e.UserId);
+                
         }
     }
 }

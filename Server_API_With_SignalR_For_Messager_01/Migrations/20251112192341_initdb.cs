@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Server_API_With_SignalR_For_Messager_01.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class initdb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -54,9 +54,12 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                     SentTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ConversationId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
+                    IsSeen = table.Column<bool>(type: "bit", nullable: false),
                     MessageType = table.Column<string>(type: "nvarchar(8)", maxLength: 8, nullable: false),
                     AudioData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
                     AudioMessage_Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FileData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    FileMessage_Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ImageData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Text = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -81,20 +84,19 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "UserImage",
+                name: "UserImages",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ImageData = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     UserId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserImage", x => x.Id);
+                    table.PrimaryKey("PK_UserImages", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_UserImage_Users_UserId",
+                        name: "FK_UserImages_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -136,8 +138,8 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserImage_UserId",
-                table: "UserImage",
+                name: "IX_UserImages_UserId",
+                table: "UserImages",
                 column: "UserId",
                 unique: true);
 
@@ -154,7 +156,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                 name: "Messages");
 
             migrationBuilder.DropTable(
-                name: "UserImage");
+                name: "UserImages");
 
             migrationBuilder.DropTable(
                 name: "UsersConversations");

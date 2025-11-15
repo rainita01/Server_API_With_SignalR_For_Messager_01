@@ -12,8 +12,8 @@ using WebSocketSharpServer.DbContext.DbModel;
 namespace Server_API_With_SignalR_For_Messager_01.Migrations
 {
     [DbContext(typeof(ApplicationDbModel))]
-    [Migration("20251025202921_addIsseenToMessageEntity")]
-    partial class addIsseenToMessageEntity
+    [Migration("20251114164744_addstateandlasttimeonlinetouser")]
+    partial class addstateandlasttimeonlinetouser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -120,8 +120,11 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("ImageId")
+                    b.Property<int?>("ImageId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("LastActiveTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Password")
                         .IsRequired()
@@ -135,6 +138,9 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
 
                     b.Property<DateTime>("RegisterDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -158,10 +164,6 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("Title")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -170,7 +172,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserImage");
+                    b.ToTable("UserImages");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.AudioMessage", b =>
@@ -281,7 +283,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebSocketSharpServer.DbContext.Entities.User", "Sender")
+                    b.HasOne("WebSocketSharpServer.DbContext.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -289,7 +291,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
 
                     b.Navigation("Conversation");
 
-                    b.Navigation("Sender");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.UserImage", b =>
@@ -310,8 +312,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.User", b =>
                 {
-                    b.Navigation("Image")
-                        .IsRequired();
+                    b.Navigation("Image");
                 });
 #pragma warning restore 612, 618
         }

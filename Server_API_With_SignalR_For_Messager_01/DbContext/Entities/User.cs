@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using demo_158.Services.Enums;
 
 namespace WebSocketSharpServer.DbContext.Entities
 {
@@ -16,8 +17,10 @@ namespace WebSocketSharpServer.DbContext.Entities
             public string PasswordSalt { get; set; }
             public DateTime RegisterDate { get; set; }
             public string? BioCaption { get; set; }
-            public UserImage Image { get; set; }
-            public int ImageId { get; set; }
+            public UserImage? Image { get; set; }
+            public int? ImageId { get; set; }
+            public DateTime LastActiveTime { get; set; } 
+            public State State { get; set; }
             public List<Conversation> Conversations { get; set; }
 
         }
@@ -25,7 +28,6 @@ namespace WebSocketSharpServer.DbContext.Entities
         {
             public int Id { get; set; }
             public byte[] ImageData { get; set; }
-            public string? Title { get; set; }
             public User User { get; set; }
             public int UserId { get; set; }
         }
@@ -46,11 +48,10 @@ namespace WebSocketSharpServer.DbContext.Entities
          {
             public int Id { get; set; }
             public DateTime SentTime { get; set; }
-           
             public int ConversationId { get; set; }
             public Conversation Conversation { get; set; }
-            public User Sender { get; set; }
             public int UserId { get; set; }
+            public User User { get; set; }
             public bool IsSeen { get; set; } = false;
          }
         

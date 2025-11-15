@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using demo_158.MVVM.Model;
 using Microsoft.EntityFrameworkCore;
-using Server_API_With_SignalR_For_Messager_01.Models;
 using WebSocketSharpServer.DbContext.DbModel;
 using WebSocketSharpServer.DbContext.Entities;
 using WebSocketSharpServer.Models;
@@ -50,7 +49,7 @@ namespace WebSocketSharpServer.Services
             dbModel.Messages.Add(messageToAdd);
             await dbModel.SaveChangesAsync();
         }
-        public async Task<List<Message>> UploadMessagesAsync(ConversationModel conversation, Message? message)
+        public async Task<List<Message>> UploadMessagesAsync(int coversationId, Message? message)
         {
             var messages = new List<Message>();
 
@@ -59,7 +58,7 @@ namespace WebSocketSharpServer.Services
 
                 messages = await dbModel.Messages
                     .AsNoTracking()
-                    .Where(i => i.ConversationId == conversation.Id)
+                    .Where(i => i.ConversationId == coversationId)
                     .Where(e => e.SentTime > message.SentTime)
                     .OrderByDescending(c => c.SentTime)
                     .Take(30)
@@ -70,7 +69,7 @@ namespace WebSocketSharpServer.Services
             {
                 messages = await dbModel.Messages
                     .AsNoTracking()
-                    .Where(i => i.ConversationId == conversation.Id)
+                    .Where(i => i.ConversationId == coversationId)
                     .OrderByDescending(c => c.SentTime)
                     .Take(30)
                     .OrderBy(e=>e.SentTime)

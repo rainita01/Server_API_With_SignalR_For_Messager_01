@@ -4,7 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-
+using demo_158.Services.Enums;
 using Microsoft.EntityFrameworkCore;
 using WebSocketSharpServer.DbContext.DbModel;
 using WebSocketSharpServer.DbContext.Entities;
@@ -21,14 +21,34 @@ namespace WebSocketSharpServer.Services
 
     public async Task<User> GetUserAsync(string username)
     {
-        var user = await dbContext.Users.FirstOrDefaultAsync(t => t.Username == username);
+        var user = await dbContext.Users.Include(e=>e.Image).FirstOrDefaultAsync(t => t.Username == username);
         if (user == null)
         {
             return null;
         }
         return user;
+        
     }
 
+    public async Task GetUserImageAsync(User? user)
+    {
+        if (user is null)
+        {
+            return;
+        }
+        var entry = dbContext.Users.Entry(user);
+        await entry.Reference(e => e.Image).LoadAsync();
+
+    }
+    public async Task<User> GetUserAsync(int userId)
+    {
+        var user = await dbContext.Users.Include(e => e.Image).FirstOrDefaultAsync(e => e.Id == userId);
+        if (user == null)
+        {
+            return null;
+        }
+        return user;
+        }
     public  UserModelFromServer ConvertUserToUserModelFromServer(User user)
     {
 
@@ -40,6 +60,32 @@ namespace WebSocketSharpServer.Services
         };
     }
 
+    public async Task<ServerAnswer> UploadProfileImage(byte[] imageBytes, int userId)
+    {
+        if (!await dbContext.Users.AnyAsync(e=>e.Id == userId))
+        {
+            return ServerAnswer.bad;
+        }
+
+        var user = await GetUserAsync(userId);
+        UserImage image;
+            
+        if (user.Image == null)
+        {
+            image = new UserImage();
+            image.UserId = userId;
+            user.Image = image;
+
+        }
+        else
+        {
+            image = user.Image;
+        }
+        image.ImageData = imageBytes;
+            await dbContext.SaveChangesAsync();
+        return ServerAnswer.ok;
+            
+    }
     public async Task<int> CreateUserAsync(string email, string username, string password)
     {
         string passowrdSalt = Guid.NewGuid().ToString("N");

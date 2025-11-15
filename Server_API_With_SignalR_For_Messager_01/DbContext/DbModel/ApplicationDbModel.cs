@@ -13,6 +13,7 @@ namespace WebSocketSharpServer.DbContext.DbModel
     public class ApplicationDbModel : Microsoft.EntityFrameworkCore.DbContext
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<UserImage> UserImages { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<TextMessage> TextMessages { get; set; }

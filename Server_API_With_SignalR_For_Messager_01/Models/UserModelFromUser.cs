@@ -16,10 +16,10 @@ namespace WebSocketSharpServer.Models
     }
     public class UserModelFromServer
     {
-        public int UserId { get; set; }
+        public int Id { get; set; }
         public string Username { get; set; }
         public string? BioCaption { get; set; }
-        public byte[] Image { get; set; }
+        public byte[]? Image { get; set; }
         public string Email { get; set; }
 
     }
