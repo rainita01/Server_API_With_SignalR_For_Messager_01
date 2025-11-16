@@ -55,7 +55,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             try
             {
                 if (await _memberShipServices.UsernamePasswordValidationAsync(user.Username, user.Password))
-                {
+                {       
                     var dbuser = await _memberShipServices.GetUserAsync(user.Username);
                     var userToSend = new UserModelFromServer()
                     {
@@ -149,6 +149,15 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         }
 
+        public async Task DeleteMessage(int messageId)
+        {
+            
+            if (await _messageServices.DeleteMessage(messageId))
+            {
+               await Clients.Caller.SendAsync("MessageDeleted", ServerAnswer.ok, messageId);
+            }
+        }
+        
         //profile methods
         public async Task ChangeProfile(ProfileEditModel profile)
         {

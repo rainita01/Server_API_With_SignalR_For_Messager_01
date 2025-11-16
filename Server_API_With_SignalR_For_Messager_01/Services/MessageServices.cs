@@ -80,6 +80,23 @@ namespace WebSocketSharpServer.Services
             return messages;
 
         }
+
+        public async Task<bool> DeleteMessage(int id)
+        {
+            var message = await dbModel.Messages.FindAsync(id);
+            if (message != null)
+            {
+
+                dbModel.Messages.Remove(message);
+                await dbModel.SaveChangesAsync();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public Task<List<MessageModelFromServer>> ConvertMessagesToMessagesModelFromUserAsync(List<Message> messages)
         {
           var convertedMessage =  messages.Select(e => new MessageModelFromServer()
