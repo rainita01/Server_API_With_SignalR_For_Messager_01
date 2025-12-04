@@ -3,6 +3,7 @@ using Server_API_With_SignalR_For_Messager_01.Services;
 using demo_158.MVVM.Model;
 using demo_158.Services.Enums;
 using WebSocketSharpServer.DbContext.DbModel;
+using WebSocketSharpServer.DbContext.Entities;
 using WebSocketSharpServer.Models;
 using WebSocketSharpServer.Services;
 
@@ -72,12 +73,12 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                 }
                 else
                 {
-                    await Clients.Caller.SendAsync("ExceptionMessage", "Incorrect Username or Password");
+                    await Clients.Caller.SendAsync("OnErrorLogin", "Incorrect Username or Password");
                 }
             }
             catch (Exception e)
             {
-                await Clients.Caller.SendAsync("ExceptionMessage", "There is an exception for sending message");
+                await Clients.Caller.SendAsync("OnErrorLogin", "Incorrect Username or Password");
             }
         }
 
@@ -113,7 +114,6 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     LastActiveTime = contactUser.LastActiveTime,
                     State = contactUser.State
                 };
-
                 conversationToSend.Add(new ConversationModelFromServer()
                 {
                     Id = e.Id,
@@ -126,19 +126,29 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         }
      
         //messages methods
-        public async Task SendMessageToPrivate(string toUser, MessageModelFromUser message)
+        public async Task<int> SendMessageToPrivate(string toUser, MessageModelFromUser message)
         {
             _users.ConnectedUsers.TryGetValue(toUser, out var value);
             var messageToSend = _messageServices.ConvertMessageFromUserToMessageFromServer(message);
+            var toUserId = await _memberShipServices.GetUserAsync(toUser);
             if (messageToSend == null)
                 throw new Exception();
 
-            if (!string.IsNullOrEmpty(value))
-            {       
-                await Clients.Client(value).SendAsync("ReceivePrivateMessage", messageToSend);
+            if (!await _conversationServices.IsConversationExistAsync(message.UserId,toUserId.Id))
+            {
+                var myUser = await _memberShipServices.GetUserAsync(message.Username);
+                var conversationId =    await _conversationServices.AddUsersToNewConversationAsync(myUser, toUserId);
+                messageToSend.ConversationId = conversationId;
+
             }
-            
-            await _messageServices.SaveMessageToDataBase(messageToSend);
+            messageToSend.Id =  await _messageServices.SaveMessageToDataBase(messageToSend);
+            if (!string.IsNullOrEmpty(value))
+            {
+                await Clients.Client(value).SendAsync("ReceivePrivateMessage", messageToSend);
+
+            }
+
+            return messageToSend.Id;
         }
 
         public async Task ReceiveMessages(int conversationId)
@@ -149,28 +159,73 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         }
 
-        public async Task DeleteMessage(int messageId)
+        public async Task DeleteMessage(int messageId,string senderUsername,string receiverUsername)
         {
             
             if (await _messageServices.DeleteMessage(messageId))
             {
                await Clients.Caller.SendAsync("MessageDeleted", ServerAnswer.ok, messageId);
+               _users.ConnectedUsers.TryGetValue(receiverUsername,out var value);
+               if (value != null)
+               {
+                   await Clients.Client(value).SendAsync("ContactDeletedMessage", messageId, senderUsername);
+               }
+            
             }
         }
-        
+
+        public async Task EditMessage(EditMessageModel newMessage)
+        {
+
+            if (await _messageServices.EditMessage(newMessage.NewText,newMessage.MessageId))
+            {
+              await  Clients.Caller.SendAsync("MessageEdited", ServerAnswer.ok, newMessage.NewText, newMessage.MessageId);
+              _users.ConnectedUsers.TryGetValue(newMessage.ContactUsername, out var value);
+              if (value != null)
+              {
+                  await Clients.Client(value).SendAsync("ContactEditedMessage",newMessage);
+              }
+
+            }
+        }
+
         //profile methods
         public async Task ChangeProfile(ProfileEditModel profile)
         {
             var user =await _memberShipServices.GetUserAsync(profile.Username);
             await _profileServices.ProfileChangeSubmitAsync(profile, user);
-            await Clients.Caller.SendAsync("ChangeProfile", "ProfileUpdatedSuccessfully.");
+            await Clients.Caller.SendAsync("ChangeProfile","ProfileUpdatedSuccessfully.");
 
         }
 
         public async Task<ServerAnswer> UploadProfileImage(byte[] imageBytes,int userId)
         {
             return await _memberShipServices.UploadProfileImage(imageBytes, userId);
+        }
+        // ask users Methods 
 
+        public async Task AskUsers(int userId)
+        {
+          var users =  await _memberShipServices.GetTopUsersAsync(userId);
+          await Clients.Caller.SendAsync("GetUsersToTalk", users);
+        }
+
+        public async Task<ContactUserModel> AskNewMessageUser(string username)
+        { 
+            
+            var user = await _memberShipServices.GetUserAsync(username);
+            var contactUsername = new ContactUserModel()
+            {
+
+                Bio = user.BioCaption,
+                ContactImage = user.Image?.ImageData,
+                ContactUsername = user.Username,
+                Email = user.Email,
+                Id = user.Id,
+                LastActiveTime = user.LastActiveTime,
+                State = user.State,
+            };
+            return contactUsername;
         }
         // disconnect handler
         public override async Task OnDisconnectedAsync(Exception? exception)

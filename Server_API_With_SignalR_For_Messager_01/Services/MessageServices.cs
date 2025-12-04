@@ -32,7 +32,7 @@ namespace WebSocketSharpServer.Services
             return messageToSend;
         }
 
-        public async Task SaveMessageToDataBase(MessageModelFromServer message)
+        public async Task<int> SaveMessageToDataBase(MessageModelFromServer message)
         {
             Message messageToAdd = message.MessageType switch
             {
@@ -48,6 +48,7 @@ namespace WebSocketSharpServer.Services
             messageToAdd.UserId = message.UserId;
             dbModel.Messages.Add(messageToAdd);
             await dbModel.SaveChangesAsync();
+            return messageToAdd.Id;
         }
         public async Task<List<Message>> UploadMessagesAsync(int coversationId, Message? message)
         {
@@ -97,6 +98,20 @@ namespace WebSocketSharpServer.Services
             }
         }
 
+        public async Task<bool> EditMessage(string text, int id)
+        {
+            var message = await dbModel.Messages.OfType<TextMessage>()
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (message != null && message.Text != text )
+            {
+                message.Text = text;
+                await dbModel.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
+
+        }
         public Task<List<MessageModelFromServer>> ConvertMessagesToMessagesModelFromUserAsync(List<Message> messages)
         {
           var convertedMessage =  messages.Select(e => new MessageModelFromServer()

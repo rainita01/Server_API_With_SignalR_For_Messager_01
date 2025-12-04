@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using demo_158.MVVM.Model;
 using demo_158.Services.Enums;
 using Microsoft.EntityFrameworkCore;
 using WebSocketSharpServer.DbContext.DbModel;
@@ -60,6 +61,27 @@ namespace WebSocketSharpServer.Services
         };
     }
 
+    public async Task<List<ContactUserModel>> GetTopUsersAsync(int userId)
+    {
+           return await dbContext.Users
+            .AsNoTracking()
+            .Include(e=>e.Image)
+            .OrderByDescending(u=>u.LastActiveTime)
+            .Where(e => e.Id != userId)
+            .Take(25)
+            .Select(user =>new ContactUserModel() 
+            { 
+                Id = user.Id,
+                Bio = user.BioCaption,
+                Email = user.Email,
+                ContactUsername = user.Username,
+                LastActiveTime = user.LastActiveTime,
+                ContactImage = user.Image != null ? user.Image.ImageData : null,
+                State = user.State
+            }).ToListAsync();
+
+    }
+
     public async Task<ServerAnswer> UploadProfileImage(byte[] imageBytes, int userId)
     {
         if (!await dbContext.Users.AnyAsync(e=>e.Id == userId))
@@ -106,7 +128,7 @@ namespace WebSocketSharpServer.Services
     public async Task<bool> UsernamePasswordValidationAsync(string username, string password)
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(user => user.Username == username);
-        if (user == null)
+        if (user == null || HashedPassword(password,user.PasswordSalt) != user.Password)
             return false;
 
         return user.Password == HashedPassword(password, user.PasswordSalt);

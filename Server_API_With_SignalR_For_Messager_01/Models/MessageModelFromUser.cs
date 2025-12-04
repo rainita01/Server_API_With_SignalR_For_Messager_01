@@ -29,4 +29,11 @@ namespace WebSocketSharpServer.Models
         public DateTime SendDate { get; set; }
         public int ConversationId { get; set; }
     }
+    public class EditMessageModel
+    {
+        public int MessageId { get; set; }
+        public string SenderUsername { get; set; }
+        public string ContactUsername { get; set; }
+        public string NewText { get; set; }
+    }
 }
