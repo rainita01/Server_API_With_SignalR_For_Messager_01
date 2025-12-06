@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using System.Collections.Concurrent;
+using Microsoft.AspNetCore.SignalR;
 using Server_API_With_SignalR_For_Messager_01.Services;
 using demo_158.MVVM.Model;
 using demo_158.Services.Enums;
+using Microsoft.IdentityModel.Tokens;
 using WebSocketSharpServer.DbContext.DbModel;
 using WebSocketSharpServer.DbContext.Entities;
 using WebSocketSharpServer.Models;
@@ -67,9 +69,10 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                         Image = dbuser.Image?.ImageData
                     };
                     await Clients.Caller.SendAsync("ReceiveUser", userToSend);
-                    _users.ConnectedUsers.Add(user.Username,Context.ConnectionId);
+                    _users.ConnectedUsers.TryAdd(user.Username,Context.ConnectionId);
                     await _stateServices.OnConnectUser(user.Username);
                     await Clients.All.SendAsync("CheckUsersState", State.Online,user.Username);
+                    _users.OfflineUsersMessages[user.Username] = new ConcurrentQueue<MessageModelFromServer>();
                 }
                 else
                 {
@@ -84,11 +87,16 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         public async Task ReconnectRequest(UserModelFromUser user)
         {
-            if (user.Username != null)
-            {
-                _users.ConnectedUsers.Add(user.Username, Context.ConnectionId);
+                _users.ConnectedUsers[user.Username] = Context.ConnectionId;
+                if (_users.OfflineUsersMessages.TryGetValue(user.Username,out var queue))
+                {
+                    while (!queue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
+                    {
+                        queue.TryDequeue(out var result);
+                        await Clients.Caller.SendAsync("ReceivePrivateMessage",result);
+                    }
+                }
                 await Clients.All.SendAsync("CheckUsersState", State.Online,user.Username);
-            }
         }
 
 
@@ -139,13 +147,18 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                 var myUser = await _memberShipServices.GetUserAsync(message.Username);
                 var conversationId =    await _conversationServices.AddUsersToNewConversationAsync(myUser, toUserId);
                 messageToSend.ConversationId = conversationId;
+                await Clients.Caller.SendAsync("GetConversationId", conversationId, toUser);
 
             }
             messageToSend.Id =  await _messageServices.SaveMessageToDataBase(messageToSend);
             if (!string.IsNullOrEmpty(value))
             {
                 await Clients.Client(value).SendAsync("ReceivePrivateMessage", messageToSend);
-
+            }
+            else
+            {
+                var queue = _users.OfflineUsersMessages.GetOrAdd(toUser, _ => new ConcurrentQueue<MessageModelFromServer>());
+                queue.Enqueue(messageToSend);
             }
 
             return messageToSend.Id;
@@ -237,7 +250,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
               var user =  _users.ConnectedUsers.FirstOrDefault(e => e.Value == connectionId);
               if (user.Key != null)
               {
-                  _users.ConnectedUsers.Remove(user.Key);
+                  _users.ConnectedUsers.Remove(user.Key,out var value);
                     await _stateServices.OnDisconnectUser(user.Key);
                   await Clients.All.SendAsync("CheckUsersState", State.Offline,user.Key);
               }

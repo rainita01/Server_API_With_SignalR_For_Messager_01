@@ -1,7 +1,14 @@
-﻿namespace Server_API_With_SignalR_For_Messager_01.Hubs
+﻿using System.Collections.Concurrent;
+using WebSocketSharpServer.Models;
+
+namespace Server_API_With_SignalR_For_Messager_01.Hubs
 {
     public  class  UsersManager
     {
-        public  Dictionary<string,string> ConnectedUsers = new Dictionary<string,string>();
+        public  ConcurrentDictionary<string,string> ConnectedUsers = new ();
+        public ConcurrentDictionary<string,ConcurrentQueue<MessageModelFromServer>> OfflineUsersMessages = new ();
+
+
+
     }
 }
