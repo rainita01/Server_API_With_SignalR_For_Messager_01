@@ -17,6 +17,8 @@ namespace WebSocketSharpServer.Models
         public int UserId { get; set; }
         public string Username { get; set; }
         public int ConversationId { get; set; }
+        public bool IsSeen { get; set; }
+        public bool IsEdited { get; set; }
     }
     public class MessageModelFromServer   
     {
@@ -27,6 +29,8 @@ namespace WebSocketSharpServer.Models
         public int UserId { get; set; }
         public string Username { get; set; }
         public DateTime SendDate { get; set; }
+        public bool IsSeen { get; set; }
+        public bool IsEdited { get; set; }
         public int ConversationId { get; set; }
     }
     public class EditMessageModel

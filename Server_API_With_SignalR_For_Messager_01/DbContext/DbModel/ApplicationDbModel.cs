@@ -20,7 +20,7 @@ namespace WebSocketSharpServer.DbContext.DbModel
         public DbSet<ImageMessage> ImageMessages { get; set; }
         public DbSet<VideoMessage> VideoMessages { get; set; }
         public DbSet<AudioMessage> AudioMessages { get; set; }
-
+        public DbSet<ConversationGroup> ConversationsGroup { get; set; }
 
         public ApplicationDbModel(DbContextOptions optionsBuilder) : base(optionsBuilder)
         {
@@ -36,6 +36,13 @@ namespace WebSocketSharpServer.DbContext.DbModel
                 .HasValue<VideoMessage>("Video")
                 .HasValue<AudioMessage>("Audio")
                 .HasValue<FileMessage>("File");
+
+            modelBuilder.Entity<Conversation>()
+                .HasDiscriminator<string>("Discriminator")
+                .HasValue<Conversation>("Conversation")
+                .HasValue<ConversationGroup>("ConversationGroup");
+
+
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(UserConfiguration).Assembly);
             base.OnModelCreating(modelBuilder);
         }

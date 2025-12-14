@@ -108,21 +108,22 @@ namespace WebSocketSharpServer.Services
         return ServerAnswer.ok;
             
     }
-    public async Task<int> CreateUserAsync(string email, string username, string password)
+    public async Task<User> CreateUserAsync(string email, string username, string password)
     {
         string passowrdSalt = Guid.NewGuid().ToString("N");
         var user = new User()
         {
             Email = email,
-           
             Username = username,
             Password = HashedPassword(password, passowrdSalt),
             PasswordSalt = passowrdSalt,
-            RegisterDate = DateTime.Now
+            RegisterDate = DateTime.Now,
+            BioCaption = "",
+            Conversations = new List<Conversation>(),
         };
         dbContext.Add(user);
         await dbContext.SaveChangesAsync();
-        return user.Id;
+        return user;
     }
 
     public async Task<bool> UsernamePasswordValidationAsync(string username, string password)

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebSocketSharpServer.DbContext.DbModel;
 
@@ -11,9 +12,11 @@ using WebSocketSharpServer.DbContext.DbModel;
 namespace Server_API_With_SignalR_For_Messager_01.Migrations
 {
     [DbContext(typeof(ApplicationDbModel))]
-    partial class ApplicationDbModelModelSnapshot : ModelSnapshot
+    [Migration("20251211084751_AddIsEditedToMessageModel")]
+    partial class AddIsEditedToMessageModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,21 +57,12 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("nvarchar(21)");
-
                     b.Property<bool>("IsConversationPrivateChat")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
 
                     b.ToTable("Conversations");
-
-                    b.HasDiscriminator().HasValue("Conversation");
-
-                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.Message", b =>
@@ -182,25 +176,6 @@ namespace Server_API_With_SignalR_For_Messager_01.Migrations
                         .IsUnique();
 
                     b.ToTable("UserImages");
-                });
-
-            modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.ConversationGroup", b =>
-                {
-                    b.HasBaseType("WebSocketSharpServer.DbContext.Entities.Conversation");
-
-                    b.Property<string>("Caption")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<byte[]>("Image")
-                        .IsRequired()
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasDiscriminator().HasValue("ConversationGroup");
                 });
 
             modelBuilder.Entity("WebSocketSharpServer.DbContext.Entities.AudioMessage", b =>

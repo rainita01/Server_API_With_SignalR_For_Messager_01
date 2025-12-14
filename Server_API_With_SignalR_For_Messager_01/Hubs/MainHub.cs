@@ -19,8 +19,6 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         private readonly ConversationServices _conversationServices;
         private readonly ProfileServices _profileServices;
         private readonly StateServices _stateServices;
-       
-
         public MainHub(UsersManager users,
             MemberShipServices memberShipServices,
             MessageServices messageServices,
@@ -43,8 +41,18 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         {
             if (!string.IsNullOrEmpty(user.Password) && !await (_memberShipServices.IsUserExistAsync(user.Username)))
             {
-                await _memberShipServices.CreateUserAsync(user.Email, user.Username, user.Password);
-                await Clients.Caller.SendAsync("SuccessSignUp", $"Welcome to AMassager {user.Username}");
+                var userCreated = await _memberShipServices.CreateUserAsync(user.Email, user.Username, user.Password);
+                var userFromServer = new UserModelFromServer()
+                {
+
+                    Username = userCreated.Username,
+                    Email = userCreated.Email,
+                    BioCaption = userCreated.BioCaption,
+                    Id = userCreated.Id,
+                    Image = userCreated.Image?.ImageData,
+                };
+                await Clients.Caller.SendAsync("SignedUserReceived", userFromServer);
+
 
             }
             else
@@ -73,6 +81,8 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     await _stateServices.OnConnectUser(user.Username);
                     await Clients.All.SendAsync("CheckUsersState", State.Online,user.Username);
                     _users.OfflineUsersMessages[user.Username] = new ConcurrentQueue<MessageModelFromServer>();
+                    _users.OfflineDeletedMessage[user.Username] = new ConcurrentQueue<int>();
+                    _users.OfflineEditedMessage[user.Username] = new ConcurrentQueue<EditMessageModel>();
                 }
                 else
                 {
@@ -96,6 +106,24 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                         await Clients.Caller.SendAsync("ReceivePrivateMessage",result);
                     }
                 }
+
+                if (_users.OfflineDeletedMessage.TryGetValue(user.Username,out var deletedQueue))
+                {
+                     while (!deletedQueue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
+                     {
+                         // اینجا ی مشکلی هست که متد دلیت مسیج درواقع ی پارامتر بیشتر میخواد
+                         deletedQueue.TryDequeue(out var result);
+                         await Clients.Caller.SendAsync("ContactDeletedMessage", result);
+                     }
+                }
+                if (_users.OfflineEditedMessage.TryGetValue(user.Username, out var editedQueue))
+                {
+                    while (!editedQueue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
+                    {
+                        editedQueue.TryDequeue(out var result);
+                        await Clients.Caller.SendAsync("ContactEditedMessage", result);
+                    }
+                }
                 await Clients.All.SendAsync("CheckUsersState", State.Online,user.Username);
         }
 
@@ -103,7 +131,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         // conversations methods
         public async Task ReceiveConversations(int userId)
         {
-            var conversations = await _conversationServices.GetConversationsAsync(userId);
+            var conversations = await _conversationServices.GetUserConversationsAsync(userId);
             var conversationToSend = new List<ConversationModelFromServer>();
                 
             foreach (var e in conversations)
@@ -132,19 +160,38 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             }
             await Clients.Caller.SendAsync("ReceiveConversations", conversationToSend);
         }
-     
+
+        public async Task<ServerAnswer> DeleteConversation(int id,string contactUsername)
+        {
+
+          var conversation =  await _conversationServices.GetConversationAsync(id);
+          await _conversationServices.DeleteConversationAsync(conversation);
+          _users.ConnectedUsers.TryGetValue(contactUsername, out var value);
+          if ( string.IsNullOrEmpty(value))
+          {
+              
+          }
+          else
+          {
+              await Clients.Client(value).SendAsync("ContactDeletedConversation", id);
+          }
+               
+          return ServerAnswer.ok;
+        }
+
+
         //messages methods
         public async Task<int> SendMessageToPrivate(string toUser, MessageModelFromUser message)
         {
             _users.ConnectedUsers.TryGetValue(toUser, out var value);
-            var messageToSend = _messageServices.ConvertMessageFromUserToMessageFromServer(message);
+            var messageToSend = _messageServices.MessageFromServerMapping(message);
             var toUserId = await _memberShipServices.GetUserAsync(toUser);
+            var myUser = await _memberShipServices.GetUserAsync(message.Username);
             if (messageToSend == null)
                 throw new Exception();
 
             if (!await _conversationServices.IsConversationExistAsync(message.UserId,toUserId.Id))
             {
-                var myUser = await _memberShipServices.GetUserAsync(message.Username);
                 var conversationId =    await _conversationServices.AddUsersToNewConversationAsync(myUser, toUserId);
                 messageToSend.ConversationId = conversationId;
                 await Clients.Caller.SendAsync("GetConversationId", conversationId, toUser);
@@ -167,12 +214,12 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         public async Task ReceiveMessages(int conversationId)
         {
             var messages = await _messageServices.UploadMessagesAsync(conversationId, null);
-            var messageModels = await _messageServices.ConvertMessagesToMessagesModelFromUserAsync(messages);
+            var messageModels = await _messageServices.MessagesFromServerMapping(messages);
             await Clients.Caller.SendAsync("ReceiveMessages", messageModels);
 
         }
 
-        public async Task DeleteMessage(int messageId,string senderUsername,string receiverUsername)
+        public async Task<ServerAnswer> DeleteMessage(int messageId,string senderUsername,string receiverUsername)
         {
             
             if (await _messageServices.DeleteMessage(messageId))
@@ -183,7 +230,16 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                {
                    await Clients.Client(value).SendAsync("ContactDeletedMessage", messageId, senderUsername);
                }
-            
+               else
+               {
+                   var queue = _users.OfflineDeletedMessage.GetOrAdd(receiverUsername, _ => new ConcurrentQueue<int>());
+                   queue.Enqueue(messageId);
+               }
+               return ServerAnswer.ok;
+            }
+            else
+            {
+                return ServerAnswer.bad;
             }
         }
 
@@ -198,7 +254,11 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
               {
                   await Clients.Client(value).SendAsync("ContactEditedMessage",newMessage);
               }
-
+              else
+              {
+                  var queue = _users.OfflineEditedMessage.GetOrAdd(newMessage.ContactUsername, _ => new ConcurrentQueue<EditMessageModel>());
+                  queue.Enqueue( newMessage);
+              }
             }
         }
 
@@ -208,12 +268,23 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
             var user =await _memberShipServices.GetUserAsync(profile.Username);
             await _profileServices.ProfileChangeSubmitAsync(profile, user);
             await Clients.Caller.SendAsync("ChangeProfile","ProfileUpdatedSuccessfully.");
+            await Clients.All.SendAsync("UserChangedProfile", profile);
 
         }
 
         public async Task<ServerAnswer> UploadProfileImage(byte[] imageBytes,int userId)
         {
-            return await _memberShipServices.UploadProfileImage(imageBytes, userId);
+
+            var result = await _memberShipServices.UploadProfileImage(imageBytes, userId);
+
+            if (result == ServerAnswer.ok)
+            {
+                // این بخش رو اضافه نمیکنم فعلا
+              await  Clients.All.SendAsync("ContactChangedProfilePicture", userId, imageBytes);
+            }
+
+            return result;
+
         }
         // ask users Methods 
 

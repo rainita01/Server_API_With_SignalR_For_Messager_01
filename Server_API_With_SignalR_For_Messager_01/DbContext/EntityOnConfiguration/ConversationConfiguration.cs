@@ -17,6 +17,7 @@ namespace WebSocketSharpServer.DbContext.EntityOnConfiguration
             builder.HasMany(p => p.Users)
                 .WithMany(p => p.Conversations)
                 .UsingEntity("UsersConversations");
+        
         }
     }
 }

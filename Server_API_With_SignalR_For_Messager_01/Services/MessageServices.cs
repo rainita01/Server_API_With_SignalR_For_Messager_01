@@ -16,7 +16,7 @@ namespace WebSocketSharpServer.Services
     public class MessageServices(ApplicationDbModel dbModel)
     {
 
-        public  MessageModelFromServer ConvertMessageFromUserToMessageFromServer(MessageModelFromUser message)
+        public  MessageModelFromServer MessageFromServerMapping(MessageModelFromUser message)
         {
             var messageToSend = new MessageModelFromServer()
             {
@@ -26,7 +26,10 @@ namespace WebSocketSharpServer.Services
                 MessageType = message.MessageType,
                 Text = message.Text,
                 UserId = message.UserId,
-                Username = message.Username
+                Username = message.Username,
+                Id = message.Id,
+                IsEdited = message.IsEdited,
+                IsSeen = message.IsSeen
             };
             
             return messageToSend;
@@ -46,6 +49,8 @@ namespace WebSocketSharpServer.Services
             messageToAdd.SentTime = message.SendDate;
             messageToAdd.ConversationId = message.ConversationId;
             messageToAdd.UserId = message.UserId;
+            messageToAdd.IsEdited = message.IsEdited;
+            messageToAdd.IsSeen = message.IsSeen;
             dbModel.Messages.Add(messageToAdd);
             await dbModel.SaveChangesAsync();
             return messageToAdd.Id;
@@ -112,14 +117,17 @@ namespace WebSocketSharpServer.Services
             return false;
 
         }
-        public Task<List<MessageModelFromServer>> ConvertMessagesToMessagesModelFromUserAsync(List<Message> messages)
+        public Task<List<MessageModelFromServer>> MessagesFromServerMapping(List<Message> messages)
         {
           var convertedMessage =  messages.Select(e => new MessageModelFromServer()
             {
-              UserId = e.UserId,
-              Id = e.Id,
-              ConversationId = e.ConversationId,
-              Text = e is TextMessage message ? message.Text : null,
+               UserId = e.UserId,
+               Id = e.Id,
+               ConversationId = e.ConversationId,
+               IsSeen = e.IsSeen,
+               IsEdited = e.IsEdited,
+               SendDate = e.SentTime,
+               Text = e is TextMessage message ? message.Text : null,
                Username = dbModel.Users
               .AsNoTracking()
               .Where(u => u.Id == e.UserId)
@@ -141,7 +149,6 @@ namespace WebSocketSharpServer.Services
                   FileMessage  file=> file.FileData,
                   _ => null
               }
-
           }).ToList();
           return Task.FromResult(convertedMessage);
         }

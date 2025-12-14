@@ -32,9 +32,8 @@ namespace WebSocketSharpServer.DbContext.Entities
             public int UserId { get; set; }
         }
 
-    public class Conversation
+        public class Conversation
         {
-
             public int Id { get; set; }
             public bool IsConversationPrivateChat { get; set; }
             public DateTime CreatedTime { get; set; }
@@ -43,7 +42,13 @@ namespace WebSocketSharpServer.DbContext.Entities
             public List<User> Users { get; set; }
 
          }
-        
+
+        public class ConversationGroup : Conversation
+        {
+            public string Title { get; set; }
+            public byte[] Image { get; set; }
+            public string Caption { get; set; }
+        }
           public class Message
          {
             public int Id { get; set; }
@@ -53,6 +58,7 @@ namespace WebSocketSharpServer.DbContext.Entities
             public int UserId { get; set; }
             public User User { get; set; }
             public bool IsSeen { get; set; } = false;
+            public bool IsEdited { get; set; } = false;
          }
         
         public class TextMessage : Message

@@ -10,7 +10,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Services
 {
     public class ConversationServices(ApplicationDbModel dbContext,MessageServices messageServices)
     {
-        public async Task<List<Conversation>> GetConversationsAsync(int userId)
+        public async Task<List<Conversation>> GetUserConversationsAsync(int userId)
         {
 
             var conversations = await dbContext.Conversations
@@ -21,6 +21,18 @@ namespace Server_API_With_SignalR_For_Messager_01.Services
             return conversations;
         }
 
+        public async Task<Conversation> GetConversationAsync(int id)
+        {
+            
+            var result =  await dbContext.Conversations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == id);
+            if (result == null)
+            {
+                throw new NullReferenceException("Conversation not found");
+            }
+            return result;
+        }
         public async Task<bool> IsConversationExistAsync(int myUserId, int contactUserId)
         {
             return await 
@@ -45,6 +57,16 @@ namespace Server_API_With_SignalR_For_Messager_01.Services
             await  dbContext.SaveChangesAsync();
             return conversation.Id;
         }
-        
+
+        public async Task DeleteConversationAsync(Conversation conversation)
+        {
+            dbContext.Conversations.Remove(conversation);
+            var messages = await dbContext.Messages.Where(e => e.ConversationId == conversation.Id).ToListAsync();
+            foreach (var message in messages)
+            {
+                dbContext.Messages.Remove(message);
+            }
+            await dbContext.SaveChangesAsync();
+        }
     }
 }
