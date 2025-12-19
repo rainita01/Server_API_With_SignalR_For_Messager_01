@@ -82,6 +82,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     _users.OfflineUsersMessages[user.Username] = new ConcurrentQueue<MessageModelFromServer>();
                     _users.OfflineDeletedMessage[user.Username] = new ConcurrentQueue<int>();
                     _users.OfflineEditedMessage[user.Username] = new ConcurrentQueue<EditMessageModel>();
+                    _users.OfflineConversationDeleted[user.Username] = new ConcurrentQueue<int>();
                 }
                 else
                 {
@@ -124,6 +125,15 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     {
                         editedQueue.TryDequeue(out var result);
                         await Clients.Caller.SendAsync("ContactEditedMessage", result);
+                    }
+                }
+
+                if (_users.OfflineConversationDeleted.TryGetValue(user.Username,out var connectionIds))    
+                {
+                    while (!connectionIds.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
+                    {
+                        connectionIds.TryDequeue(out var model);
+                    await Clients.Caller.SendAsync("DeleteConversation", model);
                     }
                 }
                 await Clients.All.SendAsync("CheckUsersState", State.Online,user.Username);
@@ -175,7 +185,8 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
           }
           else
           {
-              
+             var queue= _users.OfflineConversationDeleted.GetOrAdd(contactUsername,_=>new ConcurrentQueue<int>());
+              queue.Enqueue(id);
           }
           return ServerAnswer.ok;
         }
@@ -222,26 +233,33 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         public async Task<ServerAnswer> DeleteMessage(int messageId,string senderUsername,string receiverUsername)
         {
-            
-            if (await _messageServices.DeleteMessage(messageId))
+            try
             {
-               await Clients.Caller.SendAsync("MessageDeleted", ServerAnswer.ok, messageId);
-               _users.ConnectedUsers.TryGetValue(receiverUsername,out var value);
-               if (value != null)
-               {
-                   await Clients.Client(value).SendAsync("ContactDeletedMessage", messageId, senderUsername);
-               }
-               else
-               {
-                   var queue = _users.OfflineDeletedMessage.GetOrAdd(receiverUsername, _ => new ConcurrentQueue<int>());
-                   queue.Enqueue(messageId);
-               }
-               return ServerAnswer.ok;
-            }
-            else
-            {
+                if (await _messageServices.DeleteMessage(messageId))
+                {
+                    _users.ConnectedUsers.TryGetValue(receiverUsername, out var value);
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        await Clients.Client(value).SendAsync("ContactDeletedMessage", messageId, senderUsername);
+                    }
+                    else
+                    {
+                        var queue = _users.OfflineDeletedMessage.GetOrAdd(receiverUsername, _ => new ConcurrentQueue<int>());
+                        queue.Enqueue(messageId);
+                    }
+                    return ServerAnswer.ok;
+                }
+
                 return ServerAnswer.bad;
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw; // یا لااقل لاگ کن
+            }
+         
+              
+            
         }
 
         public async Task EditMessage(EditMessageModel newMessage)
