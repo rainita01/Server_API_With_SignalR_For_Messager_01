@@ -52,8 +52,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                     Image = userCreated.Image?.ImageData,
                 };
                 await Clients.Caller.SendAsync("SignedUserReceived", userFromServer);
-
-
+                _users.ConnectedUsers.TryAdd(user.Username, Context.ConnectionId);
             }
             else
             {
@@ -97,7 +96,9 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
 
         public async Task ReconnectRequest(UserModelFromUser user)
         {
+
                 _users.ConnectedUsers[user.Username] = Context.ConnectionId;
+                // پیامی ارسال شد و ما افلاین بودیم
                 if (_users.OfflineUsersMessages.TryGetValue(user.Username,out var queue))
                 {
                     while (!queue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
@@ -106,7 +107,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                         await Clients.Caller.SendAsync("ReceivePrivateMessage",result);
                     }
                 }
-
+                //پیامی حذف شد 
                 if (_users.OfflineDeletedMessage.TryGetValue(user.Username,out var deletedQueue))
                 {
                      while (!deletedQueue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
@@ -116,6 +117,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                          await Clients.Caller.SendAsync("ContactDeletedMessage", result);
                      }
                 }
+                //اگر در مواقع دیسکانکت شدن پیامی ادیت بشه
                 if (_users.OfflineEditedMessage.TryGetValue(user.Username, out var editedQueue))
                 {
                     while (!editedQueue.IsNullOrEmpty() && _users.ConnectedUsers.ContainsKey(user.Username))
@@ -167,15 +169,14 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
           var conversation =  await _conversationServices.GetConversationAsync(id);
           await _conversationServices.DeleteConversationAsync(conversation);
           _users.ConnectedUsers.TryGetValue(contactUsername, out var value);
-          if ( string.IsNullOrEmpty(value))
+          if ( !string.IsNullOrEmpty(value))
           {
-              
+              await Clients.Client(value).SendAsync("DeleteConversation", id);
           }
           else
           {
-              await Clients.Client(value).SendAsync("ContactDeletedConversation", id);
+              
           }
-               
           return ServerAnswer.ok;
         }
 
@@ -246,7 +247,7 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
         public async Task EditMessage(EditMessageModel newMessage)
         {
 
-            if (await _messageServices.EditMessage(newMessage.NewText,newMessage.MessageId))
+            if (await _messageServices.EditMessage(newMessage.NewText,newMessage.MessageId,newMessage.IsEdited))
             {
               await  Clients.Caller.SendAsync("MessageEdited", ServerAnswer.ok, newMessage.NewText, newMessage.MessageId);
               _users.ConnectedUsers.TryGetValue(newMessage.ContactUsername, out var value);
@@ -260,6 +261,11 @@ namespace Server_API_With_SignalR_For_Messager_01.Hubs
                   queue.Enqueue( newMessage);
               }
             }
+        }
+
+        public async Task SendSeenMessages(List<int> messagesId)
+        {
+            await _messageServices.SeenMessages(messagesId);    
         }
 
         //profile methods

@@ -103,13 +103,14 @@ namespace WebSocketSharpServer.Services
             }
         }
 
-        public async Task<bool> EditMessage(string text, int id)
+        public async Task<bool> EditMessage(string text, int id,bool isEdited)
         {
             var message = await dbModel.Messages.OfType<TextMessage>()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (message != null && message.Text != text )
             {
                 message.Text = text;
+                message.IsEdited = isEdited;
                 await dbModel.SaveChangesAsync();
                 return true;
             }
@@ -152,5 +153,13 @@ namespace WebSocketSharpServer.Services
           }).ToList();
           return Task.FromResult(convertedMessage);
         }
-    }
+
+        public async Task SeenMessages(List<int> messages)
+        {
+            await dbModel.Messages
+                .Where(m => messages.Contains(m.Id))
+                .ExecuteUpdateAsync(s =>
+                    s.SetProperty(m => m.IsSeen, true));
+        }
+    }   
 }

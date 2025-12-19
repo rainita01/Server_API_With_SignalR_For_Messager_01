@@ -48,6 +48,9 @@ namespace WebSocketSharpServer.DbContext.Entities
             public string Title { get; set; }
             public byte[] Image { get; set; }
             public string Caption { get; set; }
+            public List<int> AdminsId { get; set; }
+            public int OwnerId { get; set; }
+
         }
           public class Message
          {

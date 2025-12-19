@@ -39,5 +39,6 @@ namespace WebSocketSharpServer.Models
         public string SenderUsername { get; set; }
         public string ContactUsername { get; set; }
         public string NewText { get; set; }
+        public bool IsEdited { get; set; }
     }
 }
